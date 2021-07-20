@@ -37,7 +37,7 @@ namespace ThreadAndTPLDemo
         [Test]
         public void _03UncontendedParallelism()
         {
-            // Deliberately language specific features like LINQ
+            // Deliberately avoiding language specific features like LINQ
             var myThreads = new List<Thread>();
             for(var i = 0; i < NumCores; i++)
             {
@@ -61,6 +61,7 @@ namespace ThreadAndTPLDemo
         [Test]
         public void _04ContendedWork_Blocking()
         {
+            // A common anti-pattern is to use multiple threads, when most of the time the threads block for a contended resource (a lock in this example)
             var myThreads = new List<Thread>();
             for (var i = 0; i < NumCores; i++)
             {
@@ -84,6 +85,7 @@ namespace ThreadAndTPLDemo
         [Test]
         public void _10Tasks()
         {
+            // Show the difference between Tasks (work to do) vs Threads. Leave the scheduling of Tasks to .Net
             var task1 = new Task(() => DoUncontendedCpuBoundWork(1));
             task1.Start();
             // Or, quicker
@@ -93,6 +95,7 @@ namespace ThreadAndTPLDemo
         }
 
 
+        // PLinq allows easy parallelisation of work. NB - Works best when Tasks are free of side effects and project out results which can be 'collected' 
         [Test]
         public void _11TPL_Plinq()
         {
@@ -102,7 +105,10 @@ namespace ThreadAndTPLDemo
                 .ToList();
         }
 
-
+        // Parallel.For and Parallel.Foreach allow for more customisation of Tasks which perform side-effecting work
+        // Initialisation - once per Task partition
+        // Tight Loop - once per item in each Task / Partition
+        // Finally - once per Task partition - typically used to aggregate results into shared (contended) data
         [Test]
         public void _12TPL_ParallelFor()
         {
@@ -130,7 +136,7 @@ namespace ThreadAndTPLDemo
             Console.WriteLine($"Grand Total : {grandTotal}");
         }
 
-
+        // Note that Random() itself is NOT thread safe.
         private int[] CreateRandomIntegers(int size)
         {
             var rnd = new Random();
@@ -139,7 +145,7 @@ namespace ThreadAndTPLDemo
                 .ToArray();
         }
 
-
+        // This is just a rubbish algorithm, on a single thread, which ties up the core's resources in a tight loop.
         private static void DoInfiniteCalculation()
         {
             for (var denom = 1; denom < int.MaxValue; denom++)
@@ -166,8 +172,7 @@ namespace ThreadAndTPLDemo
         // Locks must be held over a reference type
         private readonly object _myLock = new object();
 
-        // private int _myLock = 0;
-        // private const int _myLock = 0;
+        // private int _myLock = 0; << Note that lock() must be on a reference type. Strangely, Monitor.Enter can be invoked on a value type, which is useless.
         private void DoContendedWork(int i)
         {
             Console.WriteLine("Work Item {0} on Thread {1} waiting for lock", i, Thread.CurrentThread.ManagedThreadId);
