@@ -10,11 +10,13 @@ namespace ThreadAndTPLDemo
     [TestFixture]
     public class ThreadSafety
     {
+        // This is just a hack to stop Test runners from 'buffering' console output, so that we can see Console output progress in realtime.
         static ThreadSafety()
         {
             Console.SetOut(TestContext.Progress);
         }
 
+        // Here we have a number of threads (as determined by default by TPL) each adding to a common, shared variable. No barrier means that the threads interfere with the results of other concurrent threads 
         [Test]
         public void _01ARaceCondition()
         {
@@ -25,6 +27,7 @@ namespace ThreadAndTPLDemo
             Assert.AreEqual(numLoops, sum);
         }
 
+        // We solve the race condition by providing a barrier (sequential lock, in this case).
         [Test]
         public void _01B_FixRaceCondition()
         {
@@ -40,8 +43,8 @@ namespace ThreadAndTPLDemo
         public void _02A_NonThreadSafeCollections()
         {
             const int numLoops = 100000;
-            var strings = new ConcurrentBag<string>();
-            // Will get all kinds of random exceptions / behaviour. IndexOutOfRange, Destination array was not long enough etc
+            var strings = new List<string>();
+            // With List, will get all kinds of random exceptions / behaviour. IndexOutOfRange, Destination array was not long enough etc
             Parallel.For(0, numLoops, i => strings.Add(i.ToString()));
             Assert.AreEqual(numLoops, strings.Count);
         }
@@ -50,6 +53,7 @@ namespace ThreadAndTPLDemo
         public void _02B_ConcurrentCollections()
         {
             const int numLoops = 1000000;
+            // The collections in System.Collections.Concurrent have built in Thread Safety
             var strings = new ConcurrentBag<string>();
             Parallel.For(0, numLoops, i => strings.Add(i.ToString()));
             Assert.AreEqual(numLoops, strings.Count);
@@ -57,7 +61,7 @@ namespace ThreadAndTPLDemo
 
 
         // NB - x86 Release Build
-        // Tearing
+        // Tearing happens because the processor cannot 'atomically' update a value which is larger than the register word
         [Test]
         public void _10_Tearing_UnsafeNonAtomicOperation()
         {
@@ -115,7 +119,6 @@ namespace ThreadAndTPLDemo
             catch (Exception ex)
             {
                 Console.WriteLine($"Oops - NonAtomic - {ex.Message}");
-                // Who catches?
                 throw;
             }
         }
